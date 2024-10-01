@@ -45,6 +45,7 @@ class MonteCarloTreeSearchNode():
     # children array and the child_node is returned. The states which are possible from the present state 
     # are all generated and the child_node corresponding to this generated state is returned.
     def expand(self):
+        
         while(len(self._untried_actions)):
             action = self._untried_actions.pop()
             next_state = self.move(action)
@@ -56,9 +57,9 @@ class MonteCarloTreeSearchNode():
             child_node = MonteCarloTreeSearchNode(next_state, parent=self, player_num= next_player_number, parent_action=action)
             reward = child_node.rollout()
             child_node.backpropagate(reward)
+        
             self.children.append(child_node)
         
-        # debug(self.best_child())
         return self.best_child() 
     
     
@@ -89,8 +90,8 @@ class MonteCarloTreeSearchNode():
     # that is it resulted in a win, then the win is incremented by 1. 
     # Otherwise if result is a loss, then loss is incremented by 1.
     def backpropagate(self, result):
-        self._number_of_visits += 1.
-        self._results[result] += 1.
+        self._number_of_visits += 1
+        self._results[result] += 1
         if self.parent:
             self.parent.backpropagate(result)
     
@@ -112,14 +113,13 @@ class MonteCarloTreeSearchNode():
     
     
     def _tree_policy(self):
-        current_node = self
-        while not current_node.is_terminal_node():
-            
-            if not current_node.is_fully_expanded():
-                return current_node.expand()
-            else:
-                current_node = current_node.best_child()
-        return current_node
+  
+        if not self.is_fully_expanded():
+            return self.expand()
+        else:
+            return self.best_child()
+        
+        
     
     
     # This is the best action function which returns the node corresponding to best possible move.
@@ -127,10 +127,11 @@ class MonteCarloTreeSearchNode():
     def best_action(self):
         simulation_no = 1000
         
-        for _ in range(simulation_no):
+        for i in range(simulation_no):
             v = self._tree_policy()
             reward = v.rollout()
             v.backpropagate(reward)
+        debug(self._number_of_visits)
             
         best_child_node = self.best_child(c_param=1.4)
         
@@ -172,13 +173,15 @@ class MonteCarloTreeSearchNode():
         on your state corresponding to win,
         tie or a loss.
         '''
-
-        # debug(self.parent_action)
-        # our_player = check_win(self.state,self.parent_action,start_player)
-        # opp_player = check_win(self.state,self.parent_action,2)
+        opp_number = 1
+        if(start_player == 1):
+            opp_number = 2
         
-        our_player = True
-        opp_player = False
+        our_player = check_win(self.state,self.parent_action,start_player)
+        opp_player = check_win(self.state,self.parent_action,opp_number)
+        
+        # our_player = True
+        # opp_player = False
         
         if our_player:
             return 1
@@ -203,9 +206,11 @@ class MonteCarloTreeSearchNode():
         the new state after making a move.
         '''
         
+        new_state = self.state
+        
         (x,y) = action
-        self.state[x][y] = self.player_num
-        return self.state
+        new_state[x][y] = self.player_num
+        return new_state
 
 def make_move(initial_state,player):
     start_player = player
