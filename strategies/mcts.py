@@ -6,6 +6,12 @@ from debug import *
 
 start_player = 1
 
+def change(player):
+    if(player == 1):
+        return 2
+    else:
+        return 1
+
 class MonteCarloTreeSearchNode():
     def __init__(self, state, player_num, parent=None, parent_action=None):
         self.state = state
@@ -73,15 +79,17 @@ class MonteCarloTreeSearchNode():
     # Otherwise it is -1 if it results in a loss. And it is 0 if it is a tie. If the entire game is randomly simulated,
     # that is at each turn the move is randomly selected out of set of possible moves, it is called light playout.
     def rollout(self):
-        store_state = self.state
-        while not self.is_game_over():
+        current = self
+        player = self.player_num
+        while not current.is_game_over():
             
-            possible_moves = self.get_legal_actions()
+            possible_moves = current.get_legal_actions()
             
-            action = self.rollout_policy(possible_moves)
-            self.state = self.move(action)
-        outcome = self.game_result()
-        self.state = store_state
+            action = current.rollout_policy(possible_moves)
+            player = change(player)
+            current.state = current.move(action,player)
+            
+        outcome = current.game_result()
         return outcome
     
     
@@ -131,7 +139,6 @@ class MonteCarloTreeSearchNode():
             v = self._tree_policy()
             reward = v.rollout()
             v.backpropagate(reward)
-        debug(self._number_of_visits)
             
         best_child_node = self.best_child(c_param=1.4)
         
@@ -177,8 +184,10 @@ class MonteCarloTreeSearchNode():
         if(start_player == 1):
             opp_number = 2
         
-        our_player = check_win(self.state,self.parent_action,start_player)
-        opp_player = check_win(self.state,self.parent_action,opp_number)
+        (our_player,_) = check_win(self.state,self.parent_action,start_player)
+        (opp_player,_) = check_win(self.state,self.parent_action,opp_number)
+        
+        debug(our_player)
         
         # our_player = True
         # opp_player = False
@@ -191,7 +200,7 @@ class MonteCarloTreeSearchNode():
             return 0
 
     # correct
-    def move(self,action):
+    def move(self,action,player=1):
         '''
         Modify according to your game or 
         needs. Changes the state of your 
@@ -209,7 +218,7 @@ class MonteCarloTreeSearchNode():
         new_state = self.state
         
         (x,y) = action
-        new_state[x][y] = self.player_num
+        new_state[x][y] = player
         return new_state
 
 def make_move(initial_state,player):
