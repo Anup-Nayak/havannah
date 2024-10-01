@@ -54,10 +54,12 @@ class MonteCarloTreeSearchNode():
             else:
                 next_player_number = 1
             child_node = MonteCarloTreeSearchNode(next_state, parent=self, player_num= next_player_number, parent_action=action)
-
+            reward = child_node.rollout()
+            child_node.backpropagate(reward)
             self.children.append(child_node)
         
-        return child_node 
+        # debug(self.best_child())
+        return self.best_child() 
     
     
     # This is used to check if the current node is terminal or not. 
@@ -70,13 +72,16 @@ class MonteCarloTreeSearchNode():
     # Otherwise it is -1 if it results in a loss. And it is 0 if it is a tie. If the entire game is randomly simulated,
     # that is at each turn the move is randomly selected out of set of possible moves, it is called light playout.
     def rollout(self):
+        store_state = self.state
         while not self.is_game_over():
             
             possible_moves = self.get_legal_actions()
             
             action = self.rollout_policy(possible_moves)
             self.state = self.move(action)
-        return self.game_result()
+        outcome = self.game_result()
+        self.state = store_state
+        return outcome
     
     
     # n this step all the statistics for the nodes are updated. Untill the parent node is reached, 
@@ -120,7 +125,7 @@ class MonteCarloTreeSearchNode():
     # This is the best action function which returns the node corresponding to best possible move.
     # The step of expansion, simulation and backpropagation are carried out by the code above.
     def best_action(self):
-        simulation_no = 100
+        simulation_no = 1000
         
         for _ in range(simulation_no):
             v = self._tree_policy()
@@ -167,16 +172,20 @@ class MonteCarloTreeSearchNode():
         on your state corresponding to win,
         tie or a loss.
         '''
-        # debug(type(self.parent_action))
+
         # debug(self.parent_action)
-        win, way = check_win(self.state,self.parent_action,start_player)
+        # our_player = check_win(self.state,self.parent_action,start_player)
+        # opp_player = check_win(self.state,self.parent_action,2)
         
-        # win = check_ring(self.state,self.parent_action) or check_fork_and_bridge(self.state,self.parent_action)
-        # win = False
-        if win:
+        our_player = True
+        opp_player = False
+        
+        if our_player:
             return 1
-        else:
+        elif opp_player:
             return -1
+        else:
+            return 0
 
     # correct
     def move(self,action):
