@@ -5,6 +5,8 @@ import numpy as np
 from helper import *
 from strategies.mcts import *
 
+from utils.brute import *
+
 from debug import *
 
 class AIPlayer:
@@ -25,6 +27,21 @@ class AIPlayer:
         # actual dimension
         self.dimension = (board.shape[0] + 1) // 2
         # debug(self.player_number)
+        
+        
+        # check if I can win
+        win,move1 = check_for_win(board,self.player_number)
+        if win:
+            return move1
+        
+        
+        # check if opponent can win
+        lose,move2 = check_for_loss(board,self.player_number)
+        if lose:
+            return move2
+        
+        
+        
         return make_move(board,self.player_number)
         raise NotImplementedError('Whoops I don\'t know what to do')
 

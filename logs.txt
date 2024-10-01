@@ -7,6 +7,4 @@
 3 3 0 0 0 3 3 
 3 3 3 0 3 3 3 
 Player 1 Type: ai
-Player 2 Type: random
-{"player": 1, "move": [3, 4]}
-{"player": 2, "move": [0, 3]}
+Player 2 Type: human

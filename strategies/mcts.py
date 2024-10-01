@@ -26,21 +26,12 @@ class MonteCarloTreeSearchNode():
         self._results[1] = 0
         self._results[0] = 0
         self._results[-1] = 0
-        self.initial_val  = self.give_initial()
         self._untried_actions = self.untried_actions()
         return
     
     
     
-    def give_initial(self):
-        if self.parent_action and self.parent_action in get_all_corners(dim):
-            return 10
-        elif self.parent_action and self.parent_action in get_all_edges(dim):
-            return 7
-        elif self.parent_action:
-            return 3
-        else:
-            return 0
+    
     # Returns the list of untried actions from a given state.
     def untried_actions(self):
         self._untried_actions = self.get_legal_actions()
@@ -67,11 +58,12 @@ class MonteCarloTreeSearchNode():
             action = self._untried_actions.pop()
             next_state = self.move(action)
             next_player_number = change(self.player_num)
-            child_node = MonteCarloTreeSearchNode(next_state, parent=self, player_num= next_player_number, parent_action=action)
+            child_node = MonteCarloTreeSearchNode(next_state, parent=self, player_num = next_player_number, parent_action=action)
             
-            
-            reward = child_node.rollout()
-            child_node.backpropagate(reward)
+            for _ in range(100):
+                reward = child_node.rollout()
+                child_node.backpropagate(reward)
+                
         
             self.children.append(child_node)
         
@@ -80,7 +72,7 @@ class MonteCarloTreeSearchNode():
     
     # This is used to check if the current node is terminal or not. 
     def is_terminal_node(self):
-        return self.is_game_over()
+        return self.is_game_over(self.player_num,self.parent_action)
     
     
     # From the current state, entire game is simulated till there is an outcome for the game. 
@@ -91,15 +83,16 @@ class MonteCarloTreeSearchNode():
         store_state = copy.deepcopy(self.state)
         
         player = self.player_num
-        while not self.is_game_over():
+        action = self.parent_action
+        while not self.is_game_over(player,action):
             
             possible_moves = self.get_legal_actions()
             
             action = self.rollout_policy(possible_moves)
-            player = change(player)
             self.rollout_move(action,player)
+            player = change(player)
+
             
-        
             
         outcome = self.game_result()
         self.state = store_state
@@ -126,7 +119,7 @@ class MonteCarloTreeSearchNode():
     # Once fully expanded, this function selects the best child out of the children array. 
     # The first term in the formula corresponds to exploitation and the second term corresponds to exploration.
     def best_child(self, c_param=1.4):
-        choices_weights = [(c.q() / c.n()) + self.initial_val+ c_param * np.sqrt((np.log(self.n()) / c.n())) for c in self.children]
+        choices_weights = [(c.q() / c.n()) + c_param * np.sqrt((np.log(self.n()) / c.n())) for c in self.children]
         return self.children[np.argmax(choices_weights)]
     
     # change this from random to good moves
@@ -145,8 +138,6 @@ class MonteCarloTreeSearchNode():
                 current_node = current_node.best_child()
         return current_node
 
-        
-        
     
     
     # This is the best action function which returns the node corresponding to best possible move.
@@ -176,7 +167,7 @@ class MonteCarloTreeSearchNode():
         return l
      
     # mp correct   
-    def is_game_over(self):
+    def is_game_over(self,player,action):
         '''
         Modify according to your game or 
         needs. It is the game over condition
@@ -184,12 +175,14 @@ class MonteCarloTreeSearchNode():
         true or false
         '''
         
-        valid_actions = get_valid_actions(self.state, self.player_num)
+        valid_actions = get_valid_actions(self.state, player)
 
         if len(valid_actions) == 0:
             return True
         else:
-            return False
+            win, way = check_win(self.state,action,change(player))
+            if(way): return True
+            else: return False
 
     # incorrect
     def game_result(self):
@@ -199,21 +192,20 @@ class MonteCarloTreeSearchNode():
         on your state corresponding to win,
         tie or a loss.
         '''
-        opp_number = change(start_player)
-        
-        (our_player,_) = check_win(self.state,self.parent_action,start_player)
-        (opp_player,_) = check_win(self.state,self.parent_action,opp_number)
-      
-        
-        # our_player = True
-        # opp_player = False
-        
-        if our_player:
-            return 1
-        elif opp_player:
-            return -1
+        player = self.player_num
+    
+        if(start_player == player):
+            (our_player,_) = check_win(self.state,self.parent_action,change(player))
+            if(our_player):
+                return 1
+            else:
+                return 0
         else:
-            return 0
+            (opp_player,_) = check_win(self.state,self.parent_action,change(player))
+            if(opp_player):
+                return -1
+            else:
+                return 0
 
     # correct
     
