@@ -6,6 +6,7 @@ from helper import *
 from debug import *
 
 start_player = 1
+dim = 4
 
 def change(player):
     if(player == 1):
@@ -25,22 +26,31 @@ class MonteCarloTreeSearchNode():
         self._results[1] = 0
         self._results[0] = 0
         self._results[-1] = 0
+        self.initial_val  = self.give_initial()
         self._untried_actions = self.untried_actions()
         return
     
     
+    
+    def give_initial(self):
+        if self.parent_action and self.parent_action in get_all_corners(dim):
+            return 10
+        elif self.parent_action and self.parent_action in get_all_edges(dim):
+            return 7
+        elif self.parent_action:
+            return 3
+        else:
+            return 0
     # Returns the list of untried actions from a given state.
     def untried_actions(self):
         self._untried_actions = self.get_legal_actions()
         return self._untried_actions
     
     
+    
     # Returns the difference of wins - losses
     def q(self):
-        wins = self._results[1]
-        loses = self._results[-1]
-
-        return wins - loses
+        return self._results[1] - self._results[-1]
     
     # Returns the number of times each node is visited.
     def n(self):
@@ -58,6 +68,7 @@ class MonteCarloTreeSearchNode():
             next_state = self.move(action)
             next_player_number = change(self.player_num)
             child_node = MonteCarloTreeSearchNode(next_state, parent=self, player_num= next_player_number, parent_action=action)
+            
             
             reward = child_node.rollout()
             child_node.backpropagate(reward)
@@ -115,7 +126,7 @@ class MonteCarloTreeSearchNode():
     # Once fully expanded, this function selects the best child out of the children array. 
     # The first term in the formula corresponds to exploitation and the second term corresponds to exploration.
     def best_child(self, c_param=1.4):
-        choices_weights = [(c.q() / c.n()) + c_param * np.sqrt((2 * np.log(self.n()) / c.n())) for c in self.children]
+        choices_weights = [(c.q() / c.n()) + self.initial_val+ c_param * np.sqrt((np.log(self.n()) / c.n())) for c in self.children]
         return self.children[np.argmax(choices_weights)]
     
     # change this from random to good moves
@@ -124,11 +135,16 @@ class MonteCarloTreeSearchNode():
     
     
     def _tree_policy(self):
-  
-        if not self.is_fully_expanded():
-            return self.expand()
-        else:
-            return self.best_child()
+
+        current_node = self
+        while not current_node.is_terminal_node():
+            
+            if not current_node.is_fully_expanded():
+                return current_node.expand()
+            else:
+                current_node = current_node.best_child()
+        return current_node
+
         
         
     
@@ -136,7 +152,7 @@ class MonteCarloTreeSearchNode():
     # This is the best action function which returns the node corresponding to best possible move.
     # The step of expansion, simulation and backpropagation are carried out by the code above.
     def best_action(self):
-        simulation_no = 1000
+        simulation_no = 500
         
         for i in range(simulation_no):
             v = self._tree_policy()
@@ -187,8 +203,7 @@ class MonteCarloTreeSearchNode():
         
         (our_player,_) = check_win(self.state,self.parent_action,start_player)
         (opp_player,_) = check_win(self.state,self.parent_action,opp_number)
-        
-        debug(opp_player)
+      
         
         # our_player = True
         # opp_player = False
@@ -231,7 +246,8 @@ class MonteCarloTreeSearchNode():
 
 def make_move(initial_state,player):
     start_player = player
-    root = MonteCarloTreeSearchNode(state = initial_state, player_num=player)
+    dim = initial_state.shape[0]
+    root = MonteCarloTreeSearchNode(state = initial_state, player_num = player)
     selected_node = root.best_action()
 
     return selected_node

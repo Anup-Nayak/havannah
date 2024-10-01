@@ -7,14 +7,6 @@
 3 3 0 0 0 3 3 
 3 3 3 0 3 3 3 
 Player 1 Type: ai
-Player 2 Type: ai
-{"player": 1, "move": [5, 4]}
-{"player": 2, "move": [3, 0]}
-{"player": 1, "move": [1, 6]}
-{"player": 2, "move": [5, 3]}
-{"player": 1, "move": [3, 2]}
-{"player": 2, "move": [4, 5]}
-{"player": 1, "move": [0, 1]}
-{"player": 2, "move": [3, 4]}
-{"player": 1, "move": [3, 1]}
-{"player": 2, "move": [2, 6]}
+Player 2 Type: random
+{"player": 1, "move": [3, 4]}
+{"player": 2, "move": [0, 3]}
