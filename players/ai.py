@@ -3,11 +3,20 @@ import math
 import random
 import numpy as np
 from helper import *
-from strategies.mcts import *
+from strategies.mcts4 import *
+from strategies.mcts6 import *
 
 from utils.brute import *
+from utils.dim4 import if_dim_is_4
+from utils.dim6 import if_dim_is_6
 
 from debug import *
+
+def count_filled_positions(board: np.array) -> int:
+    return np.sum((board == 1) | (board == 2))
+
+def count_unfilled_positions(board: np.array) -> int:
+    return np.sum(board == 0) 
 
 class AIPlayer:
 
@@ -21,27 +30,22 @@ class AIPlayer:
 
     def get_move(self, board: np.array) -> Tuple[int, int]:
         
-        # dimension used for helper.py functions
         self.dim = board.shape[0]
+        self.dimension = (board.shape[0] + 1) // 2       
         
-        # actual dimension
-        self.dimension = (board.shape[0] + 1) // 2
-        # debug(self.player_number)
-        
-        
-        # check if I can win
-        win,move1 = check_for_win(board,self.player_number)
-        if win:
-            return move1
-        
-        
-        # check if opponent can win
-        lose,move2 = check_for_loss(board,self.player_number)
-        if lose:
-            return move2
+        if(self.dimension == 4):
+            if if_dim_is_4(board,self.player_number):
+                return if_dim_is_4(board,self.player_number) 
+            
+            
+        if(self.dimension == 6):
+            if if_dim_is_6(board,self.player_number):
+                return if_dim_is_6(board,self.player_number)
         
         
+        if self.dimension == 4:
+            return make_move_4(board,self.player_number)
         
-        return make_move(board,self.player_number)
-        raise NotImplementedError('Whoops I don\'t know what to do')
+        if self.dimension == 6:
+            return make_move_6(board,self.player_number)
 

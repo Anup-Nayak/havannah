@@ -1,6 +1,7 @@
 import numpy as np
 from collections import defaultdict
 import copy
+import time
 
 from helper import *
 from debug import *
@@ -13,6 +14,43 @@ def change(player):
         return 2
     else:
         return 1
+
+
+def heuristic_rollout_policy(possible_moves, board, player_num):
+    opponent = 3 - player_num
+    corners = get_all_corners(board.shape[0])
+    edges = get_all_edges(board.shape[0])
+    
+    # Prioritize moves based on proximity to edges, corners, and blocking opponent
+    best_move = None
+    max_score = -float('inf')
+    
+    for move in possible_moves:
+        score = 0
+        (x, y) = move
+        
+        # 1. Prioritize moves near corners and edges
+        if move in corners:
+            score += 0  # Higher weight for corners
+        elif move in edges:
+            score += 2  # Higher weight for edge moves
+        else:
+            score += 1
+    
+        
+        # 3. Prefer moves that connect to existing pieces
+        neighbours = get_neighbours(board.shape[0], move)
+        for nx, ny in neighbours:
+            if board[nx, ny] == player_num:
+                score += 4  # Increment score for connecting to own pieces
+
+        # Choose the move with the highest score
+        if score > max_score:
+            best_move = move
+            max_score = score
+    
+    return best_move if best_move else possible_moves[0]  # Fallback to random if no best move
+
 
 class MonteCarloTreeSearchNode():
     def __init__(self, state, player_num, parent=None, parent_action=None):
@@ -30,13 +68,10 @@ class MonteCarloTreeSearchNode():
         return
     
     
-    
-    
     # Returns the list of untried actions from a given state.
     def untried_actions(self):
         self._untried_actions = self.get_legal_actions()
         return self._untried_actions
-    
     
     
     # Returns the difference of wins - losses
@@ -60,7 +95,7 @@ class MonteCarloTreeSearchNode():
             next_player_number = change(self.player_num)
             child_node = MonteCarloTreeSearchNode(next_state, parent=self, player_num = next_player_number, parent_action=action)
             
-            for _ in range(100):
+            for _ in range(10):
                 reward = child_node.rollout()
                 child_node.backpropagate(reward)
                 
@@ -124,18 +159,18 @@ class MonteCarloTreeSearchNode():
     
     # change this from random to good moves
     def rollout_policy(self, possible_moves):
-        return possible_moves[np.random.randint(len(possible_moves))]
+        return heuristic_rollout_policy(possible_moves, self.state, self.player_num)
     
     
     def _tree_policy(self):
 
         current_node = self
-        while not current_node.is_terminal_node():
+        # while not current_node.is_terminal_node():
             
-            if not current_node.is_fully_expanded():
-                return current_node.expand()
-            else:
-                current_node = current_node.best_child()
+        if not current_node.is_fully_expanded():
+            return current_node.expand()
+        else:
+            current_node = current_node.best_child()
         return current_node
 
     
@@ -143,13 +178,18 @@ class MonteCarloTreeSearchNode():
     # This is the best action function which returns the node corresponding to best possible move.
     # The step of expansion, simulation and backpropagation are carried out by the code above.
     def best_action(self):
-        simulation_no = 500
+        c = 5
+        start_time = time.time()
         
+        simulation_no = 10000
+        # print(self.state)
         for i in range(simulation_no):
+            if time.time()-start_time >= 15:
+                break
             v = self._tree_policy()
             reward = v.rollout()
             v.backpropagate(reward)
-            
+
         best_child_node = self.best_child(c_param=1.4)
         
         return best_child_node.parent_action
@@ -180,8 +220,9 @@ class MonteCarloTreeSearchNode():
         if len(valid_actions) == 0:
             return True
         else:
+            if(action == None): return False
             win, way = check_win(self.state,action,change(player))
-            if(way): return True
+            if(win): return True
             else: return False
 
     # incorrect
@@ -236,7 +277,7 @@ class MonteCarloTreeSearchNode():
         
         return new_state
 
-def make_move(initial_state,player):
+def make_move_6(initial_state,player):
     start_player = player
     dim = initial_state.shape[0]
     root = MonteCarloTreeSearchNode(state = initial_state, player_num = player)
