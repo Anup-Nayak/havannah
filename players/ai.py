@@ -8,7 +8,7 @@ from helper import *
 
 dimension = 4
 my_player = 1
-my_timer = None
+left_time = 0
 
 # ------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -111,7 +111,7 @@ class MonteCarloTreeSearchNode():
             next_player_number = 3-self.player_num
             child_node = MonteCarloTreeSearchNode(next_state, parent=self, player_num = next_player_number, parent_action=action)
             
-            for _ in range(100):
+            for _ in range(10):
                 reward = child_node.rollout()
                 child_node.backpropagate(reward)
                 
@@ -119,7 +119,6 @@ class MonteCarloTreeSearchNode():
             self.children.append(child_node)
         
         return self.best_child() 
-    
     
     def is_terminal_node(self):
         return self.is_game_over(self.player_num,self.parent_action)
@@ -153,14 +152,12 @@ class MonteCarloTreeSearchNode():
     def is_fully_expanded(self):
         return len(self._untried_actions) == 0
     
-    
     def best_child(self, c_param=1.4):
         choices_weights = [(c.q() / c.n()) + c_param * np.sqrt((np.log(self.n()) / c.n())) for c in self.children]
         return self.children[np.argmax(choices_weights)]
     
     def rollout_policy(self, possible_moves):
         return heuristic_rollout_policy_4(possible_moves, self.state, self.player_num)
-    
     
     def _tree_policy(self):
         current_node = self
@@ -172,13 +169,17 @@ class MonteCarloTreeSearchNode():
         return current_node
 
     def best_action(self):
-        c = 5
+        global left_time
         start_time = time.time()
-        
+        unfilled = count_unfilled_positions(self.state)
+        filled = count_filled_positions(self.state)
+        mid_game = 0.6*(filled+unfilled)
+        c = 3
+        h_time = 25* (mid_game*mid_game-c*(unfilled-mid_game)*(unfilled-mid_game))/(mid_game*mid_game)
         simulation_no = 100000
         
         for i in range(simulation_no):
-            if time.time()-start_time >= 10:
+            if time.time()-start_time >= min(17,h_time):
                 break
             v = self._tree_policy()
             reward = v.rollout()
@@ -218,12 +219,10 @@ class MonteCarloTreeSearchNode():
                 return -1
             else:
                 return 0
-
-    
+  
     def rollout_move(self,action,player_id):
         (x,y) = action
         self.state[x][y] = player_id
-        
         
     def move(self,action):
         new_state = copy.deepcopy(self.state)
@@ -607,7 +606,6 @@ def mate_in_4(board,index,player_num):
                     return True,move
         return True,move
     
-
 # ------------------------------------------------------------------------------------------------------------------------------------------------
 
 ''' opening theory for dim 4'''
@@ -667,7 +665,6 @@ def check_for_strat_opp(board,player_num):
         prev_corner =corner
     return False,None
 
-
 # ------------------------------------------------------------------------------------------------------------------------------------------------
 
 class AIPlayer:
@@ -683,7 +680,8 @@ class AIPlayer:
         
         dimension = (board.shape[0] + 1) // 2    
         my_player = self.player_number  
-        my_timer = self.timer
+        global left_time
+        left_time = fetch_remaining_time(self.timer,my_player)
         
         if dimension == 4:
             a = if_dim_is_4(board,self.player_number)
