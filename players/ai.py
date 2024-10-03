@@ -170,16 +170,22 @@ class MonteCarloTreeSearchNode():
 
     def best_action(self):
         global left_time
+        global dimension
         start_time = time.time()
         unfilled = count_unfilled_positions(self.state)
         filled = count_filled_positions(self.state)
         mid_game = 0.6*(filled+unfilled)
         c = 3
-        h_time = 25* (mid_game*mid_game-c*(unfilled-mid_game)*(unfilled-mid_game))/(mid_game*mid_game)
+        f1 = 17
+        f2 = 25
+        if dimension == 4:
+            f1 = 25
+            f2 = 35
+        h_time = f2* (mid_game*mid_game-c*(unfilled-mid_game)*(unfilled-mid_game))/(mid_game*mid_game)
         simulation_no = 100000
         
         for i in range(simulation_no):
-            if time.time()-start_time >= min(17,h_time):
+            if time.time()-start_time >= min(min(f1,h_time),left_time/3):
                 break
             v = self._tree_policy()
             reward = v.rollout()
@@ -269,14 +275,29 @@ def check_for_loss(board, player_num):
             return True, move  
     return False, None
 
+def check_forced_mate_in_2(board, player_num):
+    valid_moves = get_valid_actions(board)
+    for move in valid_moves:
+        temp_board = board.copy()
+        temp_board[move] = player_num
+        opponent = 3 - player_num
+        opponent_moves = get_valid_actions(temp_board)
+        flag = True
+        for opp_move in opponent_moves:
+            temp_board_opp = temp_board.copy()
+            temp_board_opp[opp_move] = opponent
+            a,b = check_for_win(temp_board_opp,player_num)
+            if(not a):
+                flag = False
+        if(flag):
+            return True,move
+    return False,None
+
 def check_mate_in_2(board, player_num):
     valid_moves = get_valid_actions(board)
     for move in valid_moves:
         temp_board = board.copy()
         temp_board[move] = player_num
-        win, _ = check_win(temp_board, move, player_num)
-        if win:
-            return True, move
 
         opponent = 3 - player_num
         opponent_moves = get_valid_actions(temp_board)
@@ -299,9 +320,6 @@ def check_loss_in_2(board, player_num):
     for move in valid_moves:
         temp_board = board.copy()
         temp_board[move] = opponent
-        win, _ = check_win(temp_board, move, opponent)
-        if win:
-            return True, move
 
         player_moves = get_valid_actions(temp_board)
         for player_move in player_moves:
@@ -322,9 +340,6 @@ def check_mate_in_3(board, player_num):
     for move in valid_moves:
         temp_board = board.copy()
         temp_board[move] = player_num
-        win, _ = check_win(temp_board, move, player_num)
-        if win:
-            return True, move
 
         opponent = 3 - player_num
         opponent_moves = get_valid_actions(temp_board)
@@ -336,9 +351,6 @@ def check_mate_in_3(board, player_num):
             for second_move in player_second_moves:
                 temp_board_player = temp_board_opp.copy()
                 temp_board_player[second_move] = player_num
-                win, _ = check_win(temp_board_player, second_move, player_num)
-                if win:
-                    return True, move
 
                 opponent_second_moves = get_valid_actions(temp_board_player)
                 for opp_second_move in opponent_second_moves:
@@ -360,9 +372,6 @@ def check_loss_in_3(board, player_num):
     for move in valid_moves:
         temp_board = board.copy()
         temp_board[move] = opponent
-        win, _ = check_win(temp_board, move, opponent)
-        if win:
-            return True, move
 
         player_moves = get_valid_actions(temp_board)
         for player_move in player_moves:
@@ -373,9 +382,6 @@ def check_loss_in_3(board, player_num):
             for opp_second_move in opponent_second_moves:
                 temp_board_opp_second = temp_board_player.copy()
                 temp_board_opp_second[opp_second_move] = opponent
-                win, _ = check_win(temp_board_opp_second, opp_second_move, opponent)
-                if win:
-                    return True, move
 
                 player_third_moves = get_valid_actions(temp_board_opp_second)
                 for player_third_move in player_third_moves:
@@ -437,6 +443,10 @@ def if_dim_is_4(board,player_number):
     if lose:
         return move2
     
+    forced_win_in_2, move5 = check_forced_mate_in_2(board, player_number)
+    if forced_win_in_2:
+        return move5
+    
     win_in_2, move3 = check_mate_in_2(board, player_number)
     if win_in_2:
         return move3
@@ -450,7 +460,6 @@ def if_dim_is_4(board,player_number):
         if win_in_3:
             return move5
 
-        # check if opponent can win in 3 moves
         lose_in_3, move6 = check_loss_in_3(board, player_number)
         if lose_in_3:
             return move6
@@ -484,7 +493,6 @@ def if_dim_is_6(board,player_number):
         if win_in_3:
             return move5
 
-        # check if opponent can win in 3 moves
         lose_in_3, move6 = check_loss_in_3(board, player_number)
         if lose_in_3:
             return move6
