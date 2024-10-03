@@ -205,7 +205,6 @@ class MonteCarloTreeSearchNode():
             else: return False
 
     def game_result(self):
-        global my_player
         player = self.player_num
     
         if(my_player == player):
@@ -678,8 +677,7 @@ class AIPlayer:
         
 
     def get_move(self, board: np.array) -> Tuple[int, int]:
-        global my_player
-        global dimension
+        
         dimension = (board.shape[0] + 1) // 2    
         my_player = self.player_number  
         global left_time
