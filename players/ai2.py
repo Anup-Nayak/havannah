@@ -8,7 +8,7 @@ from helper import *
 
 dimension = 4
 my_player = 1
-my_timer = None
+left_time = 0
 
 # ------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -111,7 +111,7 @@ class MonteCarloTreeSearchNode():
             next_player_number = 3-self.player_num
             child_node = MonteCarloTreeSearchNode(next_state, parent=self, player_num = next_player_number, parent_action=action)
             
-            for _ in range(100):
+            for _ in range(10):
                 reward = child_node.rollout()
                 child_node.backpropagate(reward)
                 
@@ -169,13 +169,23 @@ class MonteCarloTreeSearchNode():
         return current_node
 
     def best_action(self):
-        c = 5
+        global left_time
+        global dimension
         start_time = time.time()
-        
+        unfilled = count_unfilled_positions(self.state)
+        filled = count_filled_positions(self.state)
+        mid_game = 0.6*(filled+unfilled)
+        c = 3
+        f1 = 17
+        f2 = 25
+        if dimension == 4:
+            f1 = 25
+            f2 = 35
+        h_time = f2* (mid_game*mid_game-c*(unfilled-mid_game)*(unfilled-mid_game))/(mid_game*mid_game)
         simulation_no = 100000
         
         for i in range(simulation_no):
-            if time.time()-start_time >= 10:
+            if time.time()-start_time >= min(min(f1,h_time),left_time/3):
                 break
             v = self._tree_policy()
             reward = v.rollout()
@@ -201,6 +211,7 @@ class MonteCarloTreeSearchNode():
             else: return False
 
     def game_result(self):
+        global my_player
         player = self.player_num
     
         if(my_player == player):
@@ -264,14 +275,29 @@ def check_for_loss(board, player_num):
             return True, move  
     return False, None
 
+def check_forced_mate_in_2(board, player_num):
+    valid_moves = get_valid_actions(board)
+    for move in valid_moves:
+        temp_board = board.copy()
+        temp_board[move] = player_num
+        opponent = 3 - player_num
+        opponent_moves = get_valid_actions(temp_board)
+        flag = True
+        for opp_move in opponent_moves:
+            temp_board_opp = temp_board.copy()
+            temp_board_opp[opp_move] = opponent
+            a,b = check_for_win(temp_board_opp,player_num)
+            if(not a):
+                flag = False
+        if(flag):
+            return True,move
+    return False,None
+
 def check_mate_in_2(board, player_num):
     valid_moves = get_valid_actions(board)
     for move in valid_moves:
         temp_board = board.copy()
         temp_board[move] = player_num
-        win, _ = check_win(temp_board, move, player_num)
-        if win:
-            return True, move
 
         opponent = 3 - player_num
         opponent_moves = get_valid_actions(temp_board)
@@ -294,9 +320,6 @@ def check_loss_in_2(board, player_num):
     for move in valid_moves:
         temp_board = board.copy()
         temp_board[move] = opponent
-        win, _ = check_win(temp_board, move, opponent)
-        if win:
-            return True, move
 
         player_moves = get_valid_actions(temp_board)
         for player_move in player_moves:
@@ -317,9 +340,6 @@ def check_mate_in_3(board, player_num):
     for move in valid_moves:
         temp_board = board.copy()
         temp_board[move] = player_num
-        win, _ = check_win(temp_board, move, player_num)
-        if win:
-            return True, move
 
         opponent = 3 - player_num
         opponent_moves = get_valid_actions(temp_board)
@@ -331,9 +351,6 @@ def check_mate_in_3(board, player_num):
             for second_move in player_second_moves:
                 temp_board_player = temp_board_opp.copy()
                 temp_board_player[second_move] = player_num
-                win, _ = check_win(temp_board_player, second_move, player_num)
-                if win:
-                    return True, move
 
                 opponent_second_moves = get_valid_actions(temp_board_player)
                 for opp_second_move in opponent_second_moves:
@@ -355,9 +372,6 @@ def check_loss_in_3(board, player_num):
     for move in valid_moves:
         temp_board = board.copy()
         temp_board[move] = opponent
-        win, _ = check_win(temp_board, move, opponent)
-        if win:
-            return True, move
 
         player_moves = get_valid_actions(temp_board)
         for player_move in player_moves:
@@ -368,9 +382,6 @@ def check_loss_in_3(board, player_num):
             for opp_second_move in opponent_second_moves:
                 temp_board_opp_second = temp_board_player.copy()
                 temp_board_opp_second[opp_second_move] = opponent
-                win, _ = check_win(temp_board_opp_second, opp_second_move, opponent)
-                if win:
-                    return True, move
 
                 player_third_moves = get_valid_actions(temp_board_opp_second)
                 for player_third_move in player_third_moves:
@@ -432,6 +443,10 @@ def if_dim_is_4(board,player_number):
     if lose:
         return move2
     
+    forced_win_in_2, move5 = check_forced_mate_in_2(board, player_number)
+    if forced_win_in_2:
+        return move5
+    
     win_in_2, move3 = check_mate_in_2(board, player_number)
     if win_in_2:
         return move3
@@ -445,7 +460,6 @@ def if_dim_is_4(board,player_number):
         if win_in_3:
             return move5
 
-        # check if opponent can win in 3 moves
         lose_in_3, move6 = check_loss_in_3(board, player_number)
         if lose_in_3:
             return move6
@@ -479,7 +493,6 @@ def if_dim_is_6(board,player_number):
         if win_in_3:
             return move5
 
-        # check if opponent can win in 3 moves
         lose_in_3, move6 = check_loss_in_3(board, player_number)
         if lose_in_3:
             return move6
@@ -673,10 +686,12 @@ class AIPlayer:
         
 
     def get_move(self, board: np.array) -> Tuple[int, int]:
-        
+        global my_player
+        global dimension
         dimension = (board.shape[0] + 1) // 2    
         my_player = self.player_number  
-        my_timer = self.timer
+        global left_time
+        left_time = fetch_remaining_time(self.timer,my_player)
         
         if dimension == 4:
             a = if_dim_is_4(board,self.player_number)
@@ -685,12 +700,12 @@ class AIPlayer:
                 move = (int(x),int(y))
                 return move 
         
-        # if dimension == 4:
-        #     a,b = check_for_strat_opp(board,self.player_number)
-        #     if a:
-        #         (x,y) = b
-        #         move = (int(x),int(y))
-        #         return move
+        if dimension == 4:
+            a,b = check_for_strat_opp(board,self.player_number)
+            if a:
+                (x,y) = b
+                move = (int(x),int(y))
+                return move
             
         if dimension == 4:
             a = make_move_4(board,self.player_number)
@@ -705,13 +720,13 @@ class AIPlayer:
                 move = (int(x),int(y))
                 return move 
         
-        # if dimension == 6:
-        #     if(count_filled_positions(board) <= 40):
-        #         (a,b) = strategy(board,self.player_number)
-        #         if a:
-        #             (x,y) = b
-        #             move = (int(x),int(y))
-        #             return move
+        if dimension == 6:
+            if(count_filled_positions(board) <= 40):
+                (a,b) = strategy(board,self.player_number)
+                if a:
+                    (x,y) = b
+                    move = (int(x),int(y))
+                    return move
                 
             a = make_move_6(board,self.player_number)
             (x,y) = a

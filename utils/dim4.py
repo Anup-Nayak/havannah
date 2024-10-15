@@ -3,13 +3,6 @@ from helper import *
 
 from utils.brute import * 
 
-def count_filled_positions(board: np.array) -> int:
-    return np.sum((board == 1) | (board == 2))
-
-def count_unfilled_positions(board: np.array) -> int:
-    return np.sum(board == 0)
-
-
 def if_dim_is_4(board,player_number):
     if  count_filled_positions(board) <=1:
         return first_move_strategy(board,player_number)
@@ -21,6 +14,10 @@ def if_dim_is_4(board,player_number):
     lose,move2 = check_for_loss(board,player_number)
     if lose:
         return move2
+    
+    forced_win_in_2, move5 = check_forced_mate_in_2(board, player_number)
+    if forced_win_in_2:
+        return move5
     
     win_in_2, move3 = check_mate_in_2(board, player_number)
     if win_in_2:
@@ -35,7 +32,7 @@ def if_dim_is_4(board,player_number):
         if win_in_3:
             return move5
 
-        # check if opponent can win in 3 moves
         lose_in_3, move6 = check_loss_in_3(board, player_number)
         if lose_in_3:
             return move6
+

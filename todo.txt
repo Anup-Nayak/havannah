@@ -1,3 +1,0 @@
-1. minimax
-2. mcts
-3. mcts+rave
